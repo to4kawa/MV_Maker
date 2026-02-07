@@ -22,12 +22,6 @@ export const runtime = "nodejs";
 
 const exec = promisify(_exec);
 
-function getFfmpegPathStrict(): string {
-  if (!ffmpegPath) throw new Error("ffmpeg-static: ffmpeg path not found");
-  if (ffmpegPath.includes("/.next/")) throw new Error(`BAD_FFMPEG_PATH=${ffmpegPath}`);
-  return ffmpegPath;
-}
-
 async function ensureExecutable(p: string) {
   await access(p);
   await chmod(p, 0o755);
