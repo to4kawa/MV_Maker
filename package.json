@@ -10,6 +10,7 @@
     "postinstall": "node -e \"const fs=require('fs');const path=require('path');const src=require('ffmpeg-static');if(!src)process.exit(1);fs.mkdirSync('bin',{recursive:true});fs.copyFileSync(src,path.join('bin','ffmpeg'));\""
   },
   "dependencies": {
+    "@vercel/blob": "^0.22.0",
     "ffmpeg-static": "^5.2.0",
     "next": "^14.2.35",
     "react": "^18",
