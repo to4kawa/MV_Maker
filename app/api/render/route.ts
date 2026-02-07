@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
 
     const filters = makeSpectrumFilters();
     const ffmpeg = getFfmpegPath();
+    console.log("ffmpeg path:", ffmpeg);
+    await exec(`"${ffmpeg}" -version`);
+
 
     const cmd = [
       `"${ffmpeg}"`,
