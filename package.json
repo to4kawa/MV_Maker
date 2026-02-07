@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "node -e \"const fs=require('fs');const path=require('path');const src=require('ffmpeg-static');if(!src)process.exit(1);fs.mkdirSync('bin',{recursive:true});fs.copyFileSync(src,path.join('bin','ffmpeg'));\""
   },
   "dependencies": {
     "ffmpeg-static": "^5.2.0",
