@@ -4,7 +4,8 @@ import { writeFile, unlink, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
-import { exec, getFfmpegPath } from "@/lib/ffmpeg";
+import { exec, getFfmpegPath, ensureFfmpegExecutable } from "@/lib/ffmpeg";
+
 import { makeSpectrumFilters } from "@/lib/spectrum";
 
 export const runtime = "nodejs";
@@ -34,8 +35,9 @@ export async function POST(req: NextRequest) {
     await writeFile(imagePath, Buffer.from(await imageFile.arrayBuffer()));
 
     const filters = makeSpectrumFilters();
+    // ...
     const ffmpeg = getFfmpegPath();
-    console.log("ffmpeg path:", ffmpeg);
+    await ensureFfmpegExecutable(ffmpeg);
     await exec(`"${ffmpeg}" -version`);
 
 
