@@ -1,6 +1,10 @@
 // lib/ffmpeg.ts
-import ffmpegPath from "ffmpeg-static";
-import { spawn } from "node:child_process";
+import { exec as cpExec } from "child_process";
+import { promisify } from "util";
+
+export const exec = promisify(cpExec);
+export const FFMPEG_BIN = "ffmpeg";
+export const FFPROBE_BIN = "ffprobe";
 
 type RenderOpts = {
   imagePath: string;
