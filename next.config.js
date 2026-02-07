@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Route Handlers の依存をバンドルしない（= node_modules をそのまま使う）
-  serverExternalPackages: ['ffmpeg-static'],
+  experimental: {
+    // Next14系の「サーバ側バンドルから外す」指定
+    serverComponentsExternalPackages: ["ffmpeg-static"],
+  },
 };
 
 module.exports = nextConfig;
