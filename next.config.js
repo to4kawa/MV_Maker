@@ -5,4 +5,8 @@ const nextConfig = {
   },
 };
 
+const ffmpeg = getFfmpegPath();
+console.log("ffmpeg path:", ffmpeg);
+await exec(`"${ffmpeg}" -version`);
+
 module.exports = nextConfig;
