@@ -4,7 +4,7 @@ const nextConfig = {
   output: "standalone",
   experimental: {
     outputFileTracingIncludes: {
-      "/api/render": ["./node_modules/ffmpeg-static/**", "./node_modules/ffprobe-static/**"]
+      "/api/render": ["./node_modules/ffmpeg-static/**"]
     }
   }
 };
