@@ -22,10 +22,15 @@ export const runtime = "nodejs";
 
 const exec = promisify(_exec);
 
+import { copyFile } from "node:fs/promises";
+
 async function ensureExecutable(p: string) {
-  await access(p);
-  await chmod(p, 0o755);
+  const dst = join(tmpdir(), "ffmpeg");
+  await copyFile(p, dst);
+  await chmod(dst, 0o755);
+  return dst;
 }
+
 
 
 export async function POST(req: NextRequest) {
@@ -53,8 +58,7 @@ export async function POST(req: NextRequest) {
     await writeFile(imagePath, Buffer.from(await imageFile.arrayBuffer()));
 
     const filters = makeSpectrumFilters();
-    const ffmpeg = getFfmpegPathStrict();
-    await ensureExecutable(ffmpeg);
+    const ffmpeg = await ensureExecutable(ffmpegPath);
 
     const cmd = [
       `"${ffmpeg}"`,
