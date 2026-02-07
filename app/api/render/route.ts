@@ -83,3 +83,22 @@ export async function POST(req: NextRequest) {
     await Promise.all([audioPath, imagePath, outPath].map(async (p) => { try { await unlink(p); } catch {} }));
   }
 }
+
+import ffmpegPath from "ffmpeg-static";
+
+export async function GET() {
+  return new Response(
+    JSON.stringify(
+      {
+        commit: process.env.VERCEL_GIT_COMMIT_SHA,
+        env: process.env.VERCEL_ENV,
+        cwd: process.cwd(),
+        ffmpegPath,
+      },
+      null,
+      2
+    ),
+    { status: 200, headers: { "content-type": "application/json" } }
+  );
+}
+
