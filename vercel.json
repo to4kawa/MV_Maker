@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/render": {
+      "includeFiles": "node_modules/ffmpeg-static/**"
+    }
+  }
+}
