@@ -30,30 +30,45 @@ async function ensureExecutable(src: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const form = await req.formData();
-  const audioFile = form.get("audio") as File | null;
-  const imageFile = form.get("image") as File | null;
-
-  if (!audioFile || !imageFile) return new NextResponse("Missing files", { status: 400 });
-  if (audioFile.type !== "audio/mpeg") return new NextResponse("Only MP3 accepted", { status: 400 });
-
-  if (!["image/png", "image/jpeg", "image/webp"].includes(imageFile.type)) {
-    return new NextResponse("Image must be png/jpg/webp", { status: 400 });
-  }
+  const { audioUrl, imageUrl } = (await req.json()) as { audioUrl?: string; imageUrl?: string };
+  if (!audioUrl || !imageUrl) return new NextResponse("Missing URLs", { status: 400 });
 
   const id = randomUUID();
   const tmp = tmpdir();
 
   const audioPath = join(tmp, `${id}.mp3`);
-  const imgExt = imageFile.type === "image/jpeg" ? "jpg" : imageFile.type.split("/")[1];
-  const imagePath = join(tmp, `${id}.${imgExt}`);
+  const imagePath = join(tmp, `${id}`);
   const outPath = join(tmp, `${id}.mp4`);
 
   let ffmpegTmpPath = "";
+  let imagePathWithExt = "";
 
   try {
-    await writeFile(audioPath, Buffer.from(await audioFile.arrayBuffer()));
-    await writeFile(imagePath, Buffer.from(await imageFile.arrayBuffer()));
+    const [audioRes, imageRes] = await Promise.all([fetch(audioUrl), fetch(imageUrl)]);
+
+    if (!audioRes.ok) throw new Error(`audio fetch failed: ${audioRes.status}`);
+    if (!imageRes.ok) throw new Error(`image fetch failed: ${imageRes.status}`);
+
+    const audioType = audioRes.headers.get("content-type")?.split(";")[0] ?? "";
+    if (audioType && audioType !== "audio/mpeg") {
+      throw new Error(`Only MP3 accepted: ${audioType}`);
+    }
+
+    const imageType = imageRes.headers.get("content-type")?.split(";")[0] ?? "";
+    if (imageType && !["image/png", "image/jpeg", "image/webp"].includes(imageType)) {
+      throw new Error(`Image must be png/jpg/webp: ${imageType}`);
+    }
+
+    const imageExt = imageType
+      ? imageType === "image/jpeg"
+        ? "jpg"
+        : imageType.split("/")[1]
+      : "png";
+
+    imagePathWithExt = `${imagePath}.${imageExt}`;
+
+    await writeFile(audioPath, Buffer.from(await audioRes.arrayBuffer()));
+    await writeFile(imagePathWithExt, Buffer.from(await imageRes.arrayBuffer()));
 
     const filters = makeSpectrumFilters();
 
@@ -63,7 +78,7 @@ export async function POST(req: NextRequest) {
     const cmd = [
       `"${ffmpegTmpPath}"`,
       `-y`,
-      `-loop 1 -i "${imagePath}"`,
+      `-loop 1 -i "${imagePathWithExt}"`,
       `-i "${audioPath}"`,
       `-filter_complex "${filters}"`,
       `-map "[v]" -map 1:a`,
@@ -87,9 +102,13 @@ export async function POST(req: NextRequest) {
     return new NextResponse(e?.message || "Render failed", { status: 500 });
   } finally {
     await Promise.all(
-      [audioPath, imagePath, outPath, ffmpegTmpPath].filter(Boolean).map(async (p) => {
-        try { await unlink(p); } catch {}
-      })
+      [audioPath, imagePathWithExt, outPath, ffmpegTmpPath]
+        .filter(Boolean)
+        .map(async (p) => {
+          try {
+            await unlink(p);
+          } catch {}
+        })
     );
   }
 }
