@@ -9,13 +9,18 @@ import { promisify } from "node:util";
 import { access, chmod } from "node:fs/promises";
 
 import { makeSpectrumFilters } from "@/lib/spectrum";
+import { existsSync } from "node:fs";
+
+const ffmpegPath = join(process.cwd(), "bin", "ffmpeg");
+
+function getFfmpegPathStrict(): string {
+  if (!existsSync(ffmpegPath)) throw new Error(`ffmpeg not found: ${ffmpegPath}`);
+  return ffmpegPath;
+}
 
 export const runtime = "nodejs";
 
 const exec = promisify(_exec);
-
-const ffmpegStatic: any = require("ffmpeg-static");
-const ffmpegPath: string = typeof ffmpegStatic === "string" ? ffmpegStatic : ffmpegStatic?.path;
 
 function getFfmpegPathStrict(): string {
   if (!ffmpegPath) throw new Error("ffmpeg-static: ffmpeg path not found");
