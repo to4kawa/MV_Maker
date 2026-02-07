@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/render": {
+    "app/api/render/route.*": {
       "includeFiles": "node_modules/ffmpeg-static/**"
     }
   }
