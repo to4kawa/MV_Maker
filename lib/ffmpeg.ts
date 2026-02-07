@@ -1,7 +1,13 @@
 import { exec as cpExec } from "child_process";
 import { promisify } from "util";
+import ffmpegPath from "ffmpeg-static";
 
 export const exec = promisify(cpExec);
+
+export function getFfmpegPath(): string {
+  if (!ffmpegPath) throw new Error("ffmpeg path not found");
+  return ffmpegPath;
+}
 
 // On Vercel (and most Linux envs), ffmpeg/ffprobe are available on PATH.
 export const FFMPEG_BIN = process.env.FFMPEG_BIN || "ffmpeg";
