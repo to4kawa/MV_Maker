@@ -5,6 +5,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 
 import { exec, getFfmpegPath } from "@/lib/ffmpeg";
+import { probe } from "@/lib/probe";
 import { makeSpectrumFilters } from "@/lib/spectrum";
 
 export const runtime = "nodejs";
@@ -28,10 +29,16 @@ export async function POST(req: NextRequest) {
   const imgExt = imageFile.type === "image/jpeg" ? "jpg" : imageFile.type.split("/")[1];
   const imagePath = join(tmp, `${id}.${imgExt}`);
   const outPath = join(tmp, `${id}.mp4`);
+  const maxDurationSec = 8 * 60;
 
   try {
     await writeFile(audioPath, Buffer.from(await audioFile.arrayBuffer()));
     await writeFile(imagePath, Buffer.from(await imageFile.arrayBuffer()));
+
+    const duration = await probe(audioPath);
+    if (duration > maxDurationSec) {
+      return new NextResponse(`MP3 must be ≤8 minutes (${Math.ceil(duration)}s)`, { status: 400 });
+    }
 
     const filters = makeSpectrumFilters();
     const ffmpeg = getFfmpegPath();
