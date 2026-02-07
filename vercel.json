@@ -1,7 +1,2 @@
-{
-  "functions": {
-    "app/api/render/route.*": {
-      "includeFiles": "node_modules/ffmpeg-static/**"
-    }
-  }
-}
+// vercel.json  （この "functions" は Next.js App Router の app/api には効かないので削除）
+{}
