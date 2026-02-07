@@ -4,11 +4,27 @@ import { writeFile, unlink, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
-import { exec, getFfmpegPath, ensureFfmpegExecutable } from "../../../lib/ffmpeg";
+import ffmpegPath from "ffmpeg-static";
+import { exec as _exec } from "node:child_process";
+import { promisify } from "node:util";
+import { access, chmod } from "node:fs/promises";
 
 import { makeSpectrumFilters } from "@/lib/spectrum";
 
 export const runtime = "nodejs";
+
+const exec = promisify(_exec);
+
+function getFfmpegPathStrict(): string {
+  if (!ffmpegPath) throw new Error("ffmpeg-static: ffmpeg path not found");
+  return ffmpegPath;
+}
+
+async function ensureExecutable(p: string) {
+  await access(p);
+  await chmod(p, 0o755);
+}
+
 
 export async function POST(req: NextRequest) {
   const form = await req.formData();
@@ -35,11 +51,8 @@ export async function POST(req: NextRequest) {
     await writeFile(imagePath, Buffer.from(await imageFile.arrayBuffer()));
 
     const filters = makeSpectrumFilters();
-    // ...
-    const ffmpeg = getFfmpegPath();
-    await ensureFfmpegExecutable(ffmpeg);
-    await exec(`"${ffmpeg}" -version`);
-
+    const ffmpeg = getFfmpegPathStrict();
+    await ensureExecutable(ffmpeg);
 
     const cmd = [
       `"${ffmpeg}"`,
