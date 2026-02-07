@@ -84,8 +84,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-import ffmpegPath from "ffmpeg-static";
-
 export async function GET() {
   return new Response(
     JSON.stringify(
