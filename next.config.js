@@ -1,12 +1,7 @@
-// next.config.js  （ffmpeg のバイナリ同梱はここで強制する）
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
-  experimental: {
-    outputFileTracingIncludes: {
-      "/api/render": ["./node_modules/ffmpeg-static/**"]
-    }
-  }
+  // Route Handlers の依存をバンドルしない（= node_modules をそのまま使う）
+  serverExternalPackages: ['ffmpeg-static'],
 };
 
 module.exports = nextConfig;
