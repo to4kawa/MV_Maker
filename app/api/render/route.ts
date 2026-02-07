@@ -4,7 +4,6 @@ import { writeFile, unlink, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
-import ffmpegPath from "ffmpeg-static";
 import { exec as _exec } from "node:child_process";
 import { promisify } from "node:util";
 import { access, chmod } from "node:fs/promises";
@@ -15,8 +14,12 @@ export const runtime = "nodejs";
 
 const exec = promisify(_exec);
 
+const ffmpegStatic: any = require("ffmpeg-static");
+const ffmpegPath: string = typeof ffmpegStatic === "string" ? ffmpegStatic : ffmpegStatic?.path;
+
 function getFfmpegPathStrict(): string {
   if (!ffmpegPath) throw new Error("ffmpeg-static: ffmpeg path not found");
+  if (ffmpegPath.includes("/.next/")) throw new Error(`BAD_FFMPEG_PATH=${ffmpegPath}`);
   return ffmpegPath;
 }
 
@@ -87,12 +90,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return new Response(
     JSON.stringify(
-      {
-        commit: process.env.VERCEL_GIT_COMMIT_SHA,
-        env: process.env.VERCEL_ENV,
-        cwd: process.cwd(),
-        ffmpegPath,
-      },
+      { commit: process.env.VERCEL_GIT_COMMIT_SHA, env: process.env.VERCEL_ENV, cwd: process.cwd(), ffmpegPath },
       null,
       2
     ),
