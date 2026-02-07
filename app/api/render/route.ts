@@ -4,7 +4,7 @@ import { writeFile, unlink, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
-import { exec, getFfmpegPath, ensureFfmpegExecutable } from "@/lib/ffmpeg";
+import { exec, getFfmpegPath, ensureFfmpegExecutable } from "../../../lib/ffmpeg";
 
 import { makeSpectrumFilters } from "@/lib/spectrum";
 
