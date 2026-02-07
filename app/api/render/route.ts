@@ -1,98 +1,65 @@
-// app/api/render/route.ts
-import { NextResponse } from "next/server";
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import os from "node:os";
-import crypto from "node:crypto";
-import { getAudioDurationSeconds } from "@/lib/probe";
-import { renderMp4WithSpectrum } from "@/lib/ffmpeg";
+import { NextRequest, NextResponse } from "next/server"
+import { randomUUID } from "crypto"
+import { writeFile, unlink, readFile } from "fs/promises"
+import { join } from "path"
+import { tmpdir } from "os"
+import { exec } from "@/lib/ffmpeg"
+import { probe } from "@/lib/probe"
+import { makeSpectrumFilters } from "@/lib/spectrum"
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = "nodejs"
+const MAX_MINUTES = 8
 
-function randId() {
-  return crypto.randomBytes(8).toString("hex");
-}
+export async function POST(req: NextRequest) {
+  const form = await req.formData()
+  const audioFile = form.get("audio") as File | null
+  const imageFile = form.get("image") as File | null
 
-async function writeWebFileToDisk(file: File, outPath: string) {
-  const ab = await file.arrayBuffer();
-  await fs.writeFile(outPath, Buffer.from(ab));
-}
+  if (!audioFile || !imageFile) return new NextResponse("Missing files", { status: 400 })
+  if (audioFile.type !== "audio/mpeg") return new NextResponse("Only MP3 accepted", { status: 400 })
+  if (!["image/png", "image/jpeg", "image/webp"].includes(imageFile.type))
+    return new NextResponse("Image must be png/jpg/webp", { status: 400 })
 
-export async function POST(req: Request) {
+  const id = randomUUID()
+  const tmp = tmpdir()
+  const audioPath = join(tmp, `${id}.mp3`)
+  const ext = imageFile.type === "image/jpeg" ? "jpg" : imageFile.type.split("/")[1]
+  const imagePath = join(tmp, `${id}.${ext}`)
+  const outPath = join(tmp, `${id}.mp4`)
+
   try {
-    const form = await req.formData();
+    await writeFile(audioPath, Buffer.from(await audioFile.arrayBuffer()))
+    await writeFile(imagePath, Buffer.from(await imageFile.arrayBuffer()))
 
-    const mp3 = form.get("mp3");
-    const image = form.get("image");
+    const duration = await probe(audioPath)
+    if (duration > MAX_MINUTES * 60) return new NextResponse(`Audio > ${MAX_MINUTES} minutes`, { status: 400 })
 
-    if (!(mp3 instanceof File)) {
-      return new NextResponse("Missing mp3 file", { status: 400 });
-    }
-    if (!(image instanceof File)) {
-      return new NextResponse("Missing image file", { status: 400 });
-    }
+    const filters = makeSpectrumFilters(duration)
 
-    const mp3Name = mp3.name.toLowerCase();
-    const imgName = image.name.toLowerCase();
+    const cmd = [
+      `ffmpeg -y`,
+      `-loop 1 -i "${imagePath}"`,
+      `-i "${audioPath}"`,
+      `-filter_complex "${filters}"`,
+      `-t ${duration.toFixed(3)}`,
+      `-r 24 -c:v libx264 -pix_fmt yuv420p -preset veryfast -crf 23`,
+      `-c:a aac -shortest`,
+      `"${outPath}"`
+    ].join(" ")
 
-    if (!mp3Name.endsWith(".mp3") && mp3.type !== "audio/mpeg") {
-      return new NextResponse("MP3 only", { status: 400 });
-    }
-    const okImg =
-      imgName.endsWith(".png") ||
-      imgName.endsWith(".jpg") ||
-      imgName.endsWith(".jpeg") ||
-      imgName.endsWith(".webp");
-    if (!okImg) return new NextResponse("Image must be png/jpg/webp", { status: 400 });
+    await exec(cmd)
 
-    const tmp = os.tmpdir();
-    const id = randId();
-
-    const audioPath = path.join(tmp, `audio-${id}.mp3`);
-    const imageExt = imgName.endsWith(".png") ? "png" : imgName.endsWith(".webp") ? "webp" : "jpg";
-    const imagePath = path.join(tmp, `image-${id}.${imageExt}`);
-    const outPath = path.join(tmp, `out-${id}.mp4`);
-
-    await writeWebFileToDisk(mp3, audioPath);
-    await writeWebFileToDisk(image, imagePath);
-
-    const dur = await getAudioDurationSeconds(audioPath);
-    if (dur > 8 * 60) {
-      await cleanup([audioPath, imagePath, outPath]);
-      return new NextResponse("MP3 longer than 8 minutes is not allowed", { status: 400 });
-    }
-
-    await renderMp4WithSpectrum({
-      imagePath,
-      audioPath,
-      outPath,
-      fps: 24,
-      size: 1024
-    });
-
-    const buf = await fs.readFile(outPath);
-
-    await cleanup([audioPath, imagePath, outPath]);
-
-    const filename = `spectrum-${id}.mp4`;
-    return new NextResponse(buf, {
-      status: 200,
+    const mp4 = await readFile(outPath)
+    return new NextResponse(mp4, {
       headers: {
-        "content-type": "video/mp4",
-        "content-disposition": `attachment; filename="${filename}"`,
-        "cache-control": "no-store"
+        "Content-Type": "video/mp4",
+        "Content-Disposition": `attachment; filename="output.mp4"`,
+        "Cache-Control": "no-store"
       }
-    });
-  } catch (e: any) {
-    return new NextResponse(e?.message || "Render failed", { status: 500 });
-  }
-}
-
-async function cleanup(paths: string[]) {
-  await Promise.all(
-    paths.map(async (p) => {
-      try { await fs.unlink(p); } catch {}
     })
-  );
+  } catch (e: any) {
+    return new NextResponse(e?.message || "Render failed", { status: 500 })
+  } finally {
+    await Promise.all([audioPath, imagePath, outPath].map(async p => { try { await unlink(p) } catch {} }))
+  }
 }
